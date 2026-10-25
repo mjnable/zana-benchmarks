@@ -1,0 +1,35 @@
+{
+    "name": "mj-zana/benchmarks",
+    "description": "Benchmarks for Zana 2.0: container resolution and the HTTP round trip",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.5",
+        "mj-zana/container": "^2.0",
+        "mj-zana/core": "^2.0",
+        "mj-zana/http": "^2.0",
+        "mj-zana/routing": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Bench\\": "src/"
+        }
+    },
+    "scripts": {
+        "bench": [
+            "@php -n -d opcache.enable_cli=1 -d memory_limit=1G bin/container.php",
+            "@php -n -d opcache.enable_cli=1 -d memory_limit=1G bin/http.php"
+        ]
+    },
+    "config": {
+        "process-timeout": 0,
+        "sort-packages": true
+    },
+    "repositories": [
+        { "type": "path", "url": "../zana-container", "options": { "symlink": true, "versions": { "mj-zana/container": "2.0.0" } } },
+        { "type": "path", "url": "../zana-configuration", "options": { "symlink": true, "versions": { "mj-zana/configuration": "2.0.0" } } },
+        { "type": "path", "url": "../zana-core", "options": { "symlink": true, "versions": { "mj-zana/core": "2.0.0" } } },
+        { "type": "path", "url": "../zana-http", "options": { "symlink": true, "versions": { "mj-zana/http": "2.0.0" } } },
+        { "type": "path", "url": "../zana-routing", "options": { "symlink": true, "versions": { "mj-zana/routing": "2.0.0" } } }
+    ]
+}
