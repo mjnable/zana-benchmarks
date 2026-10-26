@@ -164,9 +164,5 @@ runtime ones once a service is resolved.
 
 ## Candidates for 2.x
 
-
 - **Resolution fast path:** skip the interceptor closure chain and the
   decorator lookup when none are registered.
-- **Configuration cache:** cache the merged configuration as one PHP file in
-  production, like the container cache, to remove the per-request directory
-  scans.
