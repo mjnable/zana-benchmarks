@@ -18,14 +18,19 @@ $base = __DIR__ . '/../var/http-app';
 @mkdir("{$base}/config", 0777, true);
 file_put_contents("{$base}/config/http.php", '<?php return ["middleware" => [' . var_export(PoweredBy::class, true) . ']];');
 $cache = "{$base}/var/container.php";
+$configCache = "{$base}/var/config.php";
 @unlink($cache);
+@unlink($configCache);
 
-$boot = static function (bool $cached) use ($base, $cache): HttpKernel {
+$boot = static function (bool $cached, bool $configCached = false) use ($base, $cache, $configCache): HttpKernel {
     $builder = Application::configure($base)
         ->withEnvironment('production')
         ->withProviders(HttpServiceProvider::class, RoutingServiceProvider::class, AppProvider::class);
     if ($cached) {
         $builder->withContainerCache($cache);
+    }
+    if ($configCached) {
+        $builder->withConfigurationCache($configCache);   // 2.4
     }
     $kernel = $builder->build()->container()->get(HttpKernel::class);
     assert($kernel instanceof HttpKernel);
@@ -42,7 +47,7 @@ if ($response->getStatusCode() !== 200 || $response->getHeaderLine('X-Powered-By
     fwrite(STDERR, "Unexpected response: {$response->getStatusCode()} {$response->getBody()}\n");
     exit(1);
 }
-$boot(true); // writes the container cache
+$boot(true, true); // writes the container and configuration caches
 
 $bench = new Harness();
 
@@ -51,5 +56,6 @@ $bench->run('round trip: GET /api/patients/42 (200)', 20_000, static fn () => $k
 $bench->run('round trip: GET /api/nothing (404 problem)', 20_000, static fn () => $kernel->handle($missing));
 $bench->run('boot + one request', 500, static fn () => $boot(false)->handle($show));
 $bench->run('boot + one request, container cache', 500, static fn () => $boot(true)->handle($show));
+$bench->run('boot + one request, container and configuration caches', 500, static fn () => $boot(true, true)->handle($show));
 
 echo $bench->report('HTTP: ' . Harness::environment());

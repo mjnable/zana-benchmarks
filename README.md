@@ -47,6 +47,26 @@ in-process by `HttpKernel::handle()`, with no network or web server.
 | boot + one request | Boot the application, then one request: what PHP-FPM pays per request. With and without the container cache |
 | baseline | Building one PSR-7 JSON response with Nyholm, the floor |
 
+## Results — 2026-10-26, 2.4.0
+
+Same machine and settings. The machine ran 8–20% slower than for the 2.3 run below (the hand-written
+baselines are slower too), so compare the rows of one run with each other rather than across runs.
+HTTP figures are the range of two runs.
+
+| HTTP | µs per op |
+|---|---:|
+| round trip, 200 JSON | 77–81 |
+| round trip, 404 problem document | 64–66 |
+| boot + one request | 1,070–1,170 |
+| boot + one request, container cache | 1,009–1,011 |
+| boot + one request, container and configuration caches | 638–644 |
+
+- **The configuration cache cuts boot by about 37%** in the same run: one cache file replaces
+  scanning `config/` and loading each file. It removes more the more configuration files an
+  application has: in a side-by-side measurement of the 2.3 and 2.4 code (median of 400 boots),
+  boot plus one request went from 900 to 510 µs with one file, and from 1,530 to 516 µs with five.
+- The container figures are within the machine's variation of the 2.3 run.
+
 ## Results — 2026-10-26, 2.3.0
 
 Same machine and settings as below. The container figures are from one run; the HTTP figures are
@@ -72,9 +92,12 @@ the range of three runs, which vary by about ±10% on this machine.
 | baseline: one PSR-7 response | 2.8 | 2.8 |
 
 - **The container is unchanged or slightly faster.**
-- **HTTP is 5–20% slower than 2.0.** 2.1–2.3 register more HTTP services (error renderers, security
-  headers, trusted proxies, page and HTTP caching), and every boot builds them into the container.
-  Not profiled yet.
+- **HTTP looked 5–20% slower than 2.0, but less of it was real.** Running the 2.0.0 and 2.3.0 code
+  side by side (same harness, alternating, median of 400 boots) showed boot plus one request about
+  3% slower without the container cache and 11% slower with it (0.03–0.09 ms): more services to
+  register, and a few more classes to load. The rest was variation between runs.
+- **Reading configuration was the real cost:** each configuration file added about 150 µs to boot on
+  this machine. 2.4 adds a configuration cache for that (see above).
 - **The container cache does not speed up boot here**, as in 2.0: on this small application, the
   saving is below the noise, and the cached runs came out slower. Worth profiling on Linux before
   drawing conclusions.
@@ -141,8 +164,6 @@ runtime ones once a service is resolved.
 
 ## Candidates for 2.x
 
-- **Profile boot since 2.1:** find where the extra 5–20% per request goes, and why the container
-  cache does not reduce it.
 
 - **Resolution fast path:** skip the interceptor closure chain and the
   decorator lookup when none are registered.
