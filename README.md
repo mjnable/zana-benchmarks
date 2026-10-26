@@ -1,6 +1,6 @@
 # Zana benchmarks
 
-Benchmarks for Zana 2.0: container resolution and the HTTP round trip. They
+Benchmarks for Zana 2: container resolution and the HTTP round trip. They
 answer two questions:
 
 - What does the framework cost per request?
@@ -46,6 +46,38 @@ in-process by `HttpKernel::handle()`, with no network or web server.
 | round trip | One request through the kernel, its scope, the middleware, the router, a controller and the JSON response; and a 404 problem document |
 | boot + one request | Boot the application, then one request: what PHP-FPM pays per request. With and without the container cache |
 | baseline | Building one PSR-7 JSON response with Nyholm, the floor |
+
+## Results — 2026-10-26, 2.3.0
+
+Same machine and settings as below. The container figures are from one run; the HTTP figures are
+the range of three runs, which vary by about ±10% on this machine.
+
+| Container | µs per op | vs 2.0.0-rc.1 |
+|---|---:|---:|
+| build, 100 services | 804 | 926 |
+| build, 100 services, compiled | 253 | 281 |
+| get singleton (cached) | 0.57 | 0.62 |
+| get transient, 17 objects | 44 | 45 |
+| scope: create, get 17 scoped, dispose | 45 | 47 |
+| first get, 17 singletons | 1,148 | 1,181 |
+| first get, 17 singletons, compiled | 364 | 379 |
+| baseline: 17 objects with `new` | 1.7 | 1.7 |
+
+| HTTP | µs per op | vs 2.0.0-rc.1 |
+|---|---:|---:|
+| round trip, 200 JSON | 73–80 | 70 |
+| round trip, 404 problem document | 60–66 | 57 |
+| boot + one request | 913–1,055 | 867 |
+| boot + one request, container cache | 956–1,132 | 862 |
+| baseline: one PSR-7 response | 2.8 | 2.8 |
+
+- **The container is unchanged or slightly faster.**
+- **HTTP is 5–20% slower than 2.0.** 2.1–2.3 register more HTTP services (error renderers, security
+  headers, trusted proxies, page and HTTP caching), and every boot builds them into the container.
+  Not profiled yet.
+- **The container cache does not speed up boot here**, as in 2.0: on this small application, the
+  saving is below the noise, and the cached runs came out slower. Worth profiling on Linux before
+  drawing conclusions.
 
 ## Results — 2026-10-25, the code tagged 2.0.0-rc.1
 
@@ -108,6 +140,9 @@ runtime ones once a service is resolved.
   Files written by earlier versions still load.
 
 ## Candidates for 2.x
+
+- **Profile boot since 2.1:** find where the extra 5–20% per request goes, and why the container
+  cache does not reduce it.
 
 - **Resolution fast path:** skip the interceptor closure chain and the
   decorator lookup when none are registered.
